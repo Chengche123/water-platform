@@ -1,0 +1,72 @@
+version: "3.4"
+
+services:
+  water_server:
+    build:
+      context: ./water_server
+      dockerfile: ./Dockerfile
+    ports:
+      - 8000:8000
+    environment:
+      - DATABASE_URL=mysql://root:root@db:3306/KJ402
+      - CACHE_URL=redis://cache:6379
+    networks:
+      - water-backend-tier
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+    restart: unless-stopped
+
+  db:
+    image: mysql:5.7
+    # 主机上的 3307 是调试端口，后端直接访问 Compose 里的 3306 端口即可
+    ports:
+      - 3307:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      # 默认数据库名，受到后端限制
+      - MYSQL_DATABASE=KJ402
+    networks:
+      - water-backend-tier
+    volumes:
+      - water-db:/var/lib/mysql
+    command: --lower-case-table-names=1 --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    restart: unless-stopped
+    healthcheck:
+      test: mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
+      retries: 3
+
+  cache:
+    image: redis:5
+    # 6380 为调试端口, 后端直接访问 6379 就行
+    ports:
+      - 6380:6379
+    networks:
+      - water-backend-tier
+    restart: unless-stopped
+
+  water_client:
+    build:
+      context: ./water_client
+      dockerfile: ./Dockerfile
+      args:
+        SERVER_BASE_URL: http://localhost:8000/
+        WEBSOCKET_BASE_URL: ws://localhost:8000/
+    ports:
+      - 8080:80
+    depends_on:
+      - water_server
+    restart: unless-stopped
+
+volumes:
+  water-db:
+    driver: local
+
+networks:
+  water-backend-tier:
+    driver: bridge

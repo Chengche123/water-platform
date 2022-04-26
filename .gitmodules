@@ -1,0 +1,6 @@
+[submodule "water_client"]
+	path = water_client
+	url = https://github.com/Chengche123/water_client
+[submodule "water_server"]
+	path = water_server
+	url = https://github.com/Chengche123/water_server
