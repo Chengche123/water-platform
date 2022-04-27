@@ -18,6 +18,13 @@ services:
       cache:
         condition: service_started
     restart: unless-stopped
+    # 健康检查
+    healthcheck:
+      test: curl -fs http://localhost:8000 || exit 1
+      interval: 30s
+      timeout: 30s
+      start_period: 0s
+      retries: 3
 
   db:
     image: mysql:5.7
